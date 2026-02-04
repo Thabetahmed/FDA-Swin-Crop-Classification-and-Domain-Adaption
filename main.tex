@@ -1,0 +1,227 @@
+\documentclass{llncs}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{float}    % REQUIRED for [H] to work
+\usepackage{xcolor}
+
+% --- FIX 1: STOP WEIRD VERTICAL SPACING ---
+% This command stops LaTeX from stretching your text to fill the page.
+% It fixes the issue in your second screenshot.
+\raggedbottom 
+
+% --- Title ---
+\title{Cross-Domain Cereal Crop Classification in Algeria using Fourier Domain Adaptation and Swin Transformers}
+
+% --- FIX 2: TITLE SUPPRESSED ERROR ---
+% The full title is too long for the header, so we provide a shorter version here.
+\titlerunning{Cereal Crop Classification using FDA and Swin Transformers}
+\authorrunning{M. A. Thebat et al.}
+
+% --- Authors ---
+\author{
+    Mazouz Ahmed Thebat\inst{1} \and
+    Sekhsoukh Hachem Safi Eddine\inst{1} \and
+    Guergour Youcef\inst{1} \and
+    Larabi Mohamed El Amine\inst{2} \and
+    Meziane Iftene\inst{2}
+}
+
+\institute{
+    National Higher School of Artificial Intelligence, Algiers, Algeria\\
+    \email{\{ahmed.mazouz, hachem.safi.eddine.sekhsoukh, youcef.guergour\}@ensia.edu.dz}
+    \and
+    Algerian Space Agency, Algiers, Algeria\\
+    \email{\{malarabi, miftene\}@asal.dz}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Accurate crop classification using satellite imagery is critical for agricultural monitoring and food security, particularly in North Africa where small parcel sizes and fragmented landscapes present significant challenges. However, developing robust deep learning models often requires large labeled datasets, which are scarce in regions like Algeria compared to Europe. This study addresses the challenge of classifying cereal crops (specifically Wheat) in Algeria using Sentinel-2 imagery by leveraging the label-rich PASTIS dataset from Europe. We propose a Supervised Domain Adaptation framework combining Max-NDVI compression and Fourier Domain Adaptation (FDA) to bridge the spectral domain gap between the source (Europe) and target (Algeria) domains. Crucially, the Max-NDVI compression strategy was chosen to mitigate temporal phenological misalignments between these distinct climatic zones. Unlike purely unsupervised methods, we leverage a small set of local labels (101 samples) to guide the adaptation process via a Data Mixing strategy. We demonstrate that traditional approaches and adversarial baselines yield suboptimal results due to severe spectral and temporal shifts. Our FDA-enhanced method significantly outperforms recent Multi-Task Adversarial Domain Adaptation (MT-ADA) methods (F1-score of 80.0\%), achieving a robust F1-score of 93.2\% ($\pm$ 1.9\%) for cereal classification. Furthermore, we demonstrate the framework's generalizability on a second task involving Potato crop classification (F1-score 86\% ($\pm$ 1.29\%)).
+
+\keywords{Fourier Domain Adaptation \and Supervised Domain Adaptation \and Swin Transformer \and Crop Mapping \and Sentinel-2.}
+\end{abstract}
+
+\section{Introduction}
+
+\subsection{Background and Motivation}
+Remote sensing has become a cornerstone of modern agriculture, enabling large-scale monitoring of crop types and health. In regions like North Africa, where food security is a strategic priority, accurate cereal crop mapping is essential for yield estimation and resource management. Algeria, in particular, relies heavily on cereal production, yet monitoring these vast and often fragmented agricultural landscapes remains a challenge due to the high variability of the terrain and agricultural practices. While deep learning models, particularly Vision Transformers (ViTs), have achieved state-of-the-art results, they suffer from a major limitation: they require massive amounts of labeled ground truth data. Collecting such data is expensive and labor-intensive in developing regions. In contrast, European countries often possess high-quality, publicly available datasets, such as the PASTIS dataset.
+
+\subsection{The Failure of Traditional Indices and Temporal Shifts}
+One might ask why complex deep learning is necessary when traditional vegetation indices, such as simple NDVI thresholding, exist. In the fragmented agricultural landscapes of Algeria, traditional indices fail due to spectral confusion. Cereal crops like wheat and barley often share near-identical spectral signatures with local weeds and other grasses during peak greenness. A simple threshold cannot distinguish between a productive wheat field and a fallow field overrun with weeds.
+
+Furthermore, direct transfer of time-series deep learning models fails due to the Phenological Domain Shift. The timing of crop growth cycles differs drastically between Europe (Temperate/Mediterranean) and Algeria (Semi-Arid).
+
+\paragraph{The Temporal Problem:} A wheat crop in Europe might reach peak greenness in May, while in Algeria, due to higher temperatures and earlier sowing, it might peak in March or April.
+
+\paragraph{The Consequence:} A standard Time-Series Transformer trained on European data learns specific temporal patterns (e.g., "High Greenness in May = Wheat"). When applied to Algerian data, where the crop is already senescing in May, the model misclassifies the crop.
+
+\paragraph{The Solution:} To address this, we argue that the full time-series carries "temporal noise" that hinders transferability. Instead, we utilize the "static peak" (Max-NDVI). By compressing the temporal dimension into a single representation of maximum vegetative vigor, we extract a robust, time-invariant feature. This ensures the model focuses on the presence of the crop signature, regardless of when it occurred in the season.
+
+\subsection{The Domain Shift Problem}
+Beyond temporal shifts, satellite images from Europe and Algeria differ significantly in Spectral Distribution. Differences in atmospheric conditions, sun angles, and soil reflectance properties (e.g., reddish soils in Algeria vs. darker soils in Europe) create a distribution gap. As shown in our experiments, a model trained on Europe data fails when applied to Algerian imagery, achieving only 62.0\% accuracy. Similarly, training only on the few available Algerian samples leads to severe overfitting (43.5\% accuracy).
+
+\subsection{Proposed Solution}
+To overcome these barriers, we propose a framework based on Fourier Domain Adaptation (FDA). FDA is a parameter-free adaptation technique that aligns the spectral distributions of the source and target domains by swapping their low-frequency Fourier components. Crucially, we combine FDA with:
+\begin{itemize}
+    \item \textbf{Max-NDVI Compression:} To eliminate phenological timing mismatches.
+    \item \textbf{Strict Data Separation:} We ensure spectral statistics are derived only from the target training set to prevent data leakage.
+    \item \textbf{Data Mixing:} Mixing adapted source samples with the limited available target samples to stabilize training.
+\end{itemize}
+
+% --- FIGURE 1 ---
+% [H] forces it to stay here. width=\textwidth ensures it fits.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{architecture.jpg}
+    \caption{\textbf{System Architecture.} Overview of the proposed architecture: Swin Transformer backbone with FDA-based spectral adaptation and Max-NDVI preprocessing.}
+    \label{fig:architecture}
+\end{figure}
+
+\section{Related Work}
+
+\subsection{Crop Classification with Deep Learning}
+Early work in crop classification relied on Random Forests and Support Vector Machines (SVMs) applied to NDVI time series. With the advent of deep learning, 1D-CNNs and LSTMs became standard for temporal analysis \cite{turkoglu2021}. Recently, Transformer architectures have shown superior performance. Garnot et al. (2021) introduced temporal attention encoders for satellite time series \cite{garnot2021}, outperforming RNNs. The Swin Transformer (Liu et al., 2021), which we use in this work, adapts the self-attention mechanism to vision tasks using shifted windows, making it highly effective for processing the spatial texture of agricultural parcels \cite{liu2021}.
+
+\subsection{Domain Adaptation in Remote Sensing}
+Domain Adaptation (DA) aims to mitigate the shift between source and target distributions. In remote sensing, this is often handled via Adversarial Learning. For instance, Ganin et al. (2016) proposed Domain-Adversarial Neural Networks (DANN), which align feature distributions using a gradient reversal layer \cite{ganin2016}. In the specific context of North Africa, Iftene and Larabi (2024) recently proposed a Multi-Task Adversarial Domain Adaptation (MT-ADA) framework \cite{iftene2024}. They utilized feature-level alignment and contrastive learning to transfer knowledge from Europe to Africa, achieving an F1-score of 80\% on a similar task. While effective, adversarial methods primarily align high-level features and can be unstable to train. Our work complements this by exploring pixel-level adaptation via FDA, which offers a more interpretable and computationally efficient alternative, and we demonstrate superior performance (93.2\% F1) compared to their adversarial baseline.
+
+\subsection{Fourier Domain Adaptation (FDA)}
+Yang and Soatto (2020) introduced FDA for semantic segmentation \cite{yang2020}, demonstrating that the "style" of an image (illumination, texture) is largely contained in the low-frequency amplitude of its Fourier transform, while the "content" (objects, boundaries) resides in the phase. By swapping low-frequency amplitudes, one can transform a source image to look like a target image without altering its semantic content.
+
+\section{Methodology}
+Our framework consists of four main stages: (1) Preprocessing via Max-NDVI, (2) Spectral alignment via FDA, (3) Data Mixing, and (4) Classification using a Swin Transformer.
+
+\subsection{Max-NDVI Compression}
+Instead of feeding raw time-series data, which is susceptible to the phenological shifts described in Section 1.2, we compute the Maximum Normalized Difference Vegetation Index (NDVI) across the temporal dimension.
+\begin{equation}
+\text{Max-NDVI}(x, y) = \max_{t \in T} \left( \frac{NIR_{t} - Red_{t}}{NIR_{t} + Red_{t}} \right)
+\end{equation}
+This results in a composite image that captures the peak phenological state of the crop. This compression acts as a temporal normalization step: whether the wheat peaks in March (Algeria) or May (Europe), the resulting Max-NDVI feature remains consistent, enabling effective transfer learning.
+
+\subsection{Fourier Domain Adaptation (FDA)}
+Let $D_s = \{ (x_s^i, y_s^i) \}$ be the source dataset (Europe) and $D_t^{train} = \{ x_t^j \}$ be the target training dataset (Algeria). FDA transforms a source image $x_s$ into an adapted image $x_{s \to t}$.
+
+\paragraph{Fast Fourier Transform (FFT):} We apply FFT to obtain amplitude ($A$) and phase ($P$).
+\begin{equation}
+\mathcal{F}(x) = A(x) \cdot e^{i P(x)}
+\end{equation}
+
+\paragraph{Amplitude Swapping:} We replace the low-frequency amplitude of the source image $A(x_s)$ with that of a randomly sampled target image $A(x_t)$.
+\begin{equation}
+A_{mix} = M_\beta \cdot A(x_t) + (1 - M_\beta) \cdot A(x_s)
+\end{equation}
+Where $M_\beta$ is a binary mask defined by the hyperparameter $\beta$, covering the center (low frequencies) of the spectrum.
+
+\paragraph{Inverse FFT:}
+\begin{equation}
+x_{s \to t} = \mathcal{F}^{-1} ( A_{mix} \cdot e^{i P(x_s)} )
+\end{equation}
+
+% --- FIGURE 2 FIXED PLACEMENT ---
+% [H] puts the image right here in the code flow.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{fda.png}
+    \caption{\textbf{Spectral Adaptation.} Visualizing the effect of Fourier Domain Adaptation. The adapted images retain the field boundaries of Europe but adopt the reddish-brown soil spectra of Algeria.}
+    \label{fig:fda_viz}
+\end{figure}
+
+\paragraph{Prevention of Data Leakage:} A critical component of our implementation is the strict separation of data splits. The target images $x_t$ used to provide the "Algerian style" (amplitude statistics) are drawn exclusively from the training set. Images from the validation or test sets are never used as references for style transfer.
+
+\subsection{Data Mixing Strategy}
+Simply training on adapted data ($x_{s \to t}$) can lead to artifacts. We employ a mixed-batch training strategy where every batch contains:
+\begin{enumerate}
+    \item \textbf{Real Target Data:} The small set of labeled Algerian samples ($x_t, y_t$).
+    \item \textbf{Adapted Source Data:} Transformed European samples ($x_{s \to t}, y_s$).
+\end{enumerate}
+This forces the model to learn features consistent across both synthetic and real domains.
+
+\section{Experiments and Results}
+
+\subsection{Dataset Setup}
+\begin{itemize}
+    \item \textbf{Source Domain (Europe):} PASTIS dataset (Sentinel-2). Since PASTIS provides pixel-level semantic masks, we generated binary labels (Crop/Non-Crop).
+    \item \textbf{Target Domain (Algeria):} Private dataset from ASAL, covering Northern Algeria.
+    \item \textbf{Label Scarcity:} We utilize only 101 labeled samples from the target domain for training.
+    \item \textbf{Backbone:} Swin Transformer (Tiny).
+\end{itemize}
+
+\subsection{Hyperparameter Analysis}
+Through our experiments, we found the optimal model configuration to be a learning rate of $1 \times 10^{-4}$, a weight decay of 0.05, a drop rate of 0.3, a batch size of 16, 30 epochs, and AdamW optimizer. Alongside these settings, we determined that a low $\beta$ value (approx 0.01–0.05) for the style transfer component yielded the best results, effectively transferring the “spectral style” (soil color, atmospheric haze) of Algeria to the European images without altering the geometric edges of the fields.
+
+\subsection{Results: Cereal Classification Comparison}
+We compared our method against baselines including Direct Transfer, Mixed Batch (No FDA), and the recent adversarial approach (MT-ADA) by Iftene \& Larabi (2024) which uses the same validation data.
+
+\begin{table}[h]
+\centering
+\caption{Comparative Analysis of Adaptation Strategies}
+\label{tab:results}
+\begin{tabular}{lcl}
+\toprule
+\textbf{Method} & \textbf{F1-score (\%)} & \textbf{Observation} \\ \midrule
+Target Only & 39.2 & Overfitting \\
+Direct Transfer & 58.7 & Domain Shift Failure \\
+Mixed Batch & 88.3  & Limited by spectral shift \\
+MT-ADA \cite{iftene2024} & 80.0 & Feature-level only \\
+\textbf{Ours (FDA+Mix)} & \textbf{93.2}$\pm$\textbf{1.9} & \textbf{State-of-the-Art} \\ \bottomrule
+\end{tabular}
+\end{table}
+
+Our method achieves an F1-score of \textbf{93.2\%}, significantly outperforming the MT-ADA baseline (80.0\%). This result suggests that for agricultural scenes with distinct soil and atmospheric characteristics, pixel-level spectral alignment (FDA) is more effective than feature-level adversarial alignment. The FDA approach directly addresses the root cause of the shift (visual appearance) before the network even processes the image.
+
+\subsection{Case Study: Potato Crop Classification}
+To evaluate the generalizability of our framework beyond cereals, we conducted a second set of experiments on a Potato crop classification task using a balanced ratio (50\% cereal, 50\% potato). Despite the total potato dataset consisting of only 87 images, the model achieved a Validation F1-score of \textbf{85.6\% ($\pm$ 2.4\%)}. This confirms that our framework is not specific to Cereal crops but is a robust solution for general crop mapping in data-scarce environments.
+
+\section{Conclusion}
+This study presented a data-efficient framework for crop mapping in Algeria. By carefully selecting Max-NDVI to neutralize phenological timing differences and employing Fourier Domain Adaptation to resolve spectral shifts, we successfully transferred knowledge from European datasets to North Africa. Our approach significantly outperforms recent adversarial benchmarks (93.2\% vs 80.0\%), demonstrating that simple, physics-aware spectral adaptation is often superior to complex adversarial training for remote sensing tasks.
+
+\section*{Acknowledgments}
+We explicitly acknowledge the Algerian Space Agency (ASAL) for their crucial support in this research. ASAL provided the Sentinel-2 satellite imagery for the Algerian region, the ground truth annotations, and the expertise required to validate the agricultural classes and the computational power. This work would not have been possible without their collaboration.
+
+% --- REQUIRED AI DISCLOSURE ---
+\section*{Disclosure of AI Tools Usage}
+The authors acknowledge the use of artificial intelligence tools to assist in the linguistic refinement and formatting of this manuscript. Specifically, Large Language Models (LLMs) were used to improve the clarity, grammar, and flow of the text. All scientific claims, data analysis, experimental design, and conclusions remain the sole responsibility of the authors.
+
+% --- REFERENCES ---
+\bibliographystyle{splncs04}
+\begin{thebibliography}{8}
+
+\bibitem{turkoglu2021}
+Turkoglu, M.O., et al.: Crop mapping from image time series: Deep learning with multi-scale label hierarchies. Remote Sens. Environ. \textbf{264}, 112603 (2021)
+
+\bibitem{garnot2021}
+Garnot, V.S.F., Landrieu, L.: Panoptic segmentation of satellite image time series with convolutional temporal attention networks. In: Proc. ICCV (2021)
+
+\bibitem{liu2021}
+Liu, Z., et al.: Swin Transformer: Hierarchical Vision Transformer using Shifted Windows. In: Proc. ICCV (2021)
+
+\bibitem{ganin2016}
+Ganin, Y., et al.: Domain-adversarial training of neural networks. J. Mach. Learn. Res. (2016)
+
+\bibitem{iftene2024}
+Iftene, M., Larabi, M.E.A.: Multi-Task Adversarial Domain Adaptation for Cereal Crop Mapping with Limited Target Labels. IEEE Access (Submitted) (2024)
+
+\bibitem{yang2020}
+Yang, Y., Soatto, S.: FDA: Fourier Domain Adaptation for Semantic Segmentation. In: Proc. CVPR (2020)
+
+\bibitem{tuia2016}
+Tuia, D., Persello, C., Bruzzone, L.: Domain adaptation for the classification of remote sensing data: An overview of recent advances. IEEE Geosci. Remote Sens. Mag. (2016)
+
+\bibitem{ruder2017}
+Ruder, S.: An Overview of Multi-Task Learning in Deep Neural Networks. arXiv preprint arXiv:1706.05098 (2017)
+
+\bibitem{trisetyarso2024}
+Trisetyarso, A., et al.: Adversarial Multitask Learning for Domain Adaptation through Domain Adapter. IEEE Access (2024)
+
+\end{thebibliography}
+
+\end{document}

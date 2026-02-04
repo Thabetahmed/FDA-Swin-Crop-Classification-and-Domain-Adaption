@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+myenv/
+venv/
+ENV/
+env/
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large Data Files (optional - uncomment if you don't want to track these)
+# *.pth
+# *.npy
+# output/pastis_maxndvi/
+# output/fda_adapted/
+# output/algeria_s2_data/
+# PASTIS/DATA_S2/
+# PASTIS/ANNOTATIONS/
+
+# Credentials
+*.json
+!PASTIS/metadata.geojson
+!PASTIS/NORM_S2_patch.json
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp

@@ -117,8 +117,8 @@ crop2/
 
 ```bash
 # Clone the repository
-git clone https://github.com/Thabetahmed/FDA-Swin-Crop-Classification.git
-cd FDA-Swin-Crop-Classification
+git clone https://github.com/Thabetahmed/FDA-Swin-Crop-Classification-and-Domain-Adaption.git
+cd FDA-Swin-Crop-Classification-and-Domain-Adaption
 
 # Create virtual environment
 python -m venv myenv

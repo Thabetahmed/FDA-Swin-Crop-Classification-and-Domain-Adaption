@@ -117,8 +117,8 @@ crop2/
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/crop-classification-algeria.git
-cd crop-classification-algeria
+git clone https://github.com/Thabetahmed/FDA-Swin-Crop-Classification.git
+cd FDA-Swin-Crop-Classification
 
 # Create virtual environment
 python -m venv myenv
